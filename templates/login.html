@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - GestãoTec+</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="login-body">
+
+<div class="login-card">
+
+    <img src="{{ url_for('static', filename='logo.png') }}" class="login-logo">
+
+    <div class="logo-title">GestãoTec+</div>
+    <p class="subtitle">ERP Web para gestão empresarial</p>
+
+    {% if erro %}
+        <p style="color:red; margin-bottom: 10px;">{{ erro }}</p>
+    {% endif %}
+
+    <form method="POST">
+        <input class="input" type="email" name="email" placeholder="E-mail" required>
+        <input class="input" type="password" name="senha" placeholder="Senha" required>
+        <button class="btn" type="submit">Entrar no sistema</button>
+    </form>
+
+    <p style="margin-top:15px; color:#6b7280; font-size:14px;">
+        Usuário teste: admin@gestaotec.com<br>
+        Senha: 123456
+    </p>
+
+</div>
+
+</body>
+</html>

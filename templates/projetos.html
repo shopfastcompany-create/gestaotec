@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Projetos - GestãoTec+</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="app">
+
+    <aside class="sidebar">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="sidebar-logo">
+
+        <a href="/dashboard">Dashboard</a>
+        <a href="/clientes">Clientes</a>
+        <a href="/financeiro">Financeiro</a>
+        <a href="/projetos">Projetos</a>
+        <a href="/tarefas">Tarefas</a>
+        <a href="/logout">Sair</a>
+    </aside>
+
+    <main class="main">
+
+        <div class="topbar">
+            <h1>Projetos</h1>
+            <div class="user-box">Controle de entregas</div>
+        </div>
+
+        <div class="form-card">
+            <h2>Novo Projeto</h2>
+
+            <form method="POST" class="form-grid">
+                <input class="input" type="text" name="nome" placeholder="Nome do projeto" required>
+                <input class="input" type="text" name="cliente" placeholder="Cliente">
+
+                <select class="input" name="status" required>
+                    <option value="Em andamento">Em andamento</option>
+                    <option value="Concluído">Concluído</option>
+                    <option value="Pausado">Pausado</option>
+                </select>
+
+                <button class="btn" type="submit">Criar Projeto</button>
+            </form>
+        </div>
+
+        <div class="table-card">
+            <h2>Projetos cadastrados</h2>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Projeto</th>
+                        <th>Cliente</th>
+                        <th>Status</th>
+                        <th>Início</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for projeto in projetos %}
+                    <tr>
+                        <td>{{ projeto[1] }}</td>
+                        <td>{{ projeto[2] }}</td>
+
+                        <td>
+                            {% if projeto[3] == "Concluído" %}
+                                <span class="badge badge-green">Concluído</span>
+                            {% elif projeto[3] == "Pausado" %}
+                                <span class="badge badge-yellow">Pausado</span>
+                            {% else %}
+                                <span class="badge badge-blue">Em andamento</span>
+                            {% endif %}
+                        </td>
+
+                        <td>{{ projeto[4] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+
+</div>
+
+</body>
+</html>

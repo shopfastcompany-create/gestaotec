@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - GestãoTec+</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="app">
+
+    <aside class="sidebar">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="sidebar-logo">
+
+        <a href="/dashboard">Dashboard</a>
+        <a href="/clientes">Clientes</a>
+        <a href="/financeiro">Financeiro</a>
+        <a href="/projetos">Projetos</a>
+        <a href="/tarefas">Tarefas</a>
+        <a href="/logout">Sair</a>
+    </aside>
+
+    <main class="main">
+
+        <div class="topbar">
+            <h1>Dashboard</h1>
+            <div class="user-box">Olá, {{ session.usuario }}</div>
+        </div>
+
+        <div class="cards">
+            <div class="card">
+                <span>Clientes</span>
+                <h3>{{ total_clientes }}</h3>
+            </div>
+
+            <div class="card">
+                <span>Projetos</span>
+                <h3>{{ total_projetos }}</h3>
+            </div>
+
+            <div class="card">
+                <span>Tarefas</span>
+                <h3>{{ total_tarefas }}</h3>
+            </div>
+
+            <div class="card">
+                <span>Saldo Atual</span>
+                <h3>R$ {{ "%.2f"|format(saldo) }}</h3>
+            </div>
+        </div>
+
+        <div class="cards">
+            <div class="card">
+                <span>Entradas</span>
+                <h3 class="green">R$ {{ "%.2f"|format(entradas) }}</h3>
+            </div>
+
+            <div class="card">
+                <span>Saídas</span>
+                <h3 class="red">R$ {{ "%.2f"|format(saidas) }}</h3>
+            </div>
+
+            <div class="card">
+                <span>Projetos Ativos</span>
+                <h3>4</h3>
+            </div>
+
+            <div class="card">
+                <span>Produtividade</span>
+                <h3>87%</h3>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <h2>Resumo Executivo</h2>
+            <p style="margin-top:10px; color:#6b7280;">
+                O sistema GestãoTec+ centraliza clientes, finanças, projetos e tarefas em uma única plataforma,
+                oferecendo indicadores para tomada de decisão rápida e organizada.
+            </p>
+        </div>
+
+    </main>
+
+</div>
+
+</body>
+</html>
