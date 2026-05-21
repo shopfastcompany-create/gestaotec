@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat IA - GestaoTec+</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="app">
+
+    <aside class="sidebar">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="sidebar-logo">
+
+        <a href="/dashboard">Dashboard</a>
+        <a href="/clientes">Clientes</a>
+        <a href="/financeiro">Financeiro</a>
+        <a href="/projetos">Projetos</a>
+        <a href="/tarefas">Tarefas</a>
+        <a href="/ia">Chat IA</a>
+        <a href="/logout">Sair</a>
+    </aside>
+
+    <main class="main">
+
+        <div class="topbar">
+            <h1>Chat IA</h1>
+            <div class="user-box">
+                {% if modo_ia %}
+                    IA conectada
+                {% else %}
+                    Modo local
+                {% endif %}
+            </div>
+        </div>
+
+        <section class="chat-layout">
+            <div class="chat-panel">
+                <div id="chatMessages" class="chat-messages">
+                    <div class="chat-message bot">
+                        <strong>Assistente GestaoTec+</strong>
+                        <p>Ola, {{ session.usuario }}. Pergunte sobre clientes, financeiro, projetos ou tarefas.</p>
+                    </div>
+                </div>
+
+                <form id="chatForm" class="chat-form">
+                    <input
+                        id="chatInput"
+                        class="input chat-input"
+                        type="text"
+                        placeholder="Digite sua pergunta..."
+                        autocomplete="off"
+                        required
+                    >
+                    <button id="chatButton" class="btn chat-button" type="submit">Enviar</button>
+                </form>
+            </div>
+
+            <aside class="chat-side">
+                <h2>Ideias de perguntas</h2>
+                <button class="suggestion" type="button">Qual e o saldo atual?</button>
+                <button class="suggestion" type="button">Quais projetos estao em andamento?</button>
+                <button class="suggestion" type="button">Resumo das tarefas cadastradas</button>
+                <button class="suggestion" type="button">Como esta a carteira de clientes?</button>
+            </aside>
+        </section>
+
+    </main>
+
+</div>
+
+<script>
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("chatInput");
+    const button = document.getElementById("chatButton");
+    const messages = document.getElementById("chatMessages");
+    const suggestions = document.querySelectorAll(".suggestion");
+
+    function addMessage(type, text, title) {
+        const item = document.createElement("div");
+        item.className = `chat-message ${type}`;
+
+        const strong = document.createElement("strong");
+        strong.textContent = title;
+
+        const paragraph = document.createElement("p");
+        paragraph.textContent = text;
+
+        item.appendChild(strong);
+        item.appendChild(paragraph);
+        messages.appendChild(item);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function sendMessage(text) {
+        addMessage("user", text, "Voce");
+        input.value = "";
+        button.disabled = true;
+        button.textContent = "Enviando...";
+
+        try {
+            const response = await fetch("/api/ia", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({mensagem: text})
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.erro || "Erro ao consultar a IA.");
+            }
+
+            addMessage("bot", data.resposta, data.usando_openai ? "IA" : "Assistente local");
+        } catch (error) {
+            addMessage("bot error", error.message, "Erro");
+        } finally {
+            button.disabled = false;
+            button.textContent = "Enviar";
+            input.focus();
+        }
+    }
+
+    form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (text) {
+            sendMessage(text);
+        }
+    });
+
+    suggestions.forEach((suggestion) => {
+        suggestion.addEventListener("click", () => sendMessage(suggestion.textContent));
+    });
+</script>
+
+</body>
+</html>

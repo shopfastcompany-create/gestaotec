@@ -234,6 +234,120 @@ a {
     color: #92400e;
 }
 
+.chat-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 310px;
+    gap: 22px;
+    align-items: start;
+}
+
+.chat-panel,
+.chat-side {
+    background: white;
+    border-radius: 18px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+}
+
+.chat-panel {
+    min-height: 650px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    background: #f8fafc;
+}
+
+.chat-message {
+    max-width: 78%;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    line-height: 1.45;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.chat-message strong {
+    display: block;
+    margin-bottom: 6px;
+    color: #0b2f57;
+}
+
+.chat-message p {
+    color: #374151;
+}
+
+.chat-message.bot {
+    background: white;
+    border-left: 5px solid #ff8c1a;
+}
+
+.chat-message.user {
+    margin-left: auto;
+    background: #0b2f57;
+    color: white;
+}
+
+.chat-message.user strong,
+.chat-message.user p {
+    color: white;
+}
+
+.chat-message.error {
+    border-left-color: #dc2626;
+}
+
+.chat-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 140px;
+    gap: 12px;
+    padding: 18px;
+    border-top: 1px solid #e5e7eb;
+    background: white;
+}
+
+.chat-input {
+    margin-bottom: 0;
+}
+
+.chat-button {
+    margin: 0;
+}
+
+.chat-side {
+    padding: 22px;
+}
+
+.chat-side h2 {
+    margin-bottom: 16px;
+    color: #0b2f57;
+    font-size: 20px;
+}
+
+.suggestion {
+    width: 100%;
+    display: block;
+    margin-bottom: 10px;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background: white;
+    color: #374151;
+    text-align: left;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.suggestion:hover {
+    border-color: #ff8c1a;
+    color: #0b2f57;
+    background: #fff7ed;
+}
+
 @media(max-width: 900px) {
     .app {
         flex-direction: column;
@@ -244,8 +358,18 @@ a {
     }
 
     .cards,
-    .form-grid {
+    .form-grid,
+    .chat-layout,
+    .chat-form {
         grid-template-columns: 1fr;
+    }
+
+    .chat-panel {
+        min-height: 560px;
+    }
+
+    .chat-message {
+        max-width: 100%;
     }
 
     .topbar {

@@ -1,6 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+import os
+
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import sqlite3
 from datetime import datetime
+
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
 app = Flask(__name__)
 app.secret_key = "gestaotec_secret_key"
@@ -11,6 +18,116 @@ app.secret_key = "gestaotec_secret_key"
 # =========================
 def conectar():
     return sqlite3.connect("gestaotec.db")
+
+
+def usuario_logado():
+    return "usuario" in session
+
+
+def resumo_gestao():
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM clientes")
+    total_clientes = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM projetos")
+    total_projetos = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM tarefas")
+    total_tarefas = cursor.fetchone()[0]
+
+    cursor.execute("SELECT SUM(valor) FROM financeiro WHERE tipo='Entrada'")
+    entradas = cursor.fetchone()[0] or 0
+
+    cursor.execute("SELECT SUM(valor) FROM financeiro WHERE tipo=?", ("Sa\u00edda",))
+    saidas = cursor.fetchone()[0] or 0
+
+    cursor.execute("SELECT nome, cliente, status FROM projetos ORDER BY id DESC LIMIT 5")
+    projetos = cursor.fetchall()
+
+    cursor.execute("SELECT titulo, responsavel, status, prazo FROM tarefas ORDER BY id DESC LIMIT 5")
+    tarefas = cursor.fetchall()
+
+    conn.close()
+
+    saldo = entradas - saidas
+    return {
+        "total_clientes": total_clientes,
+        "total_projetos": total_projetos,
+        "total_tarefas": total_tarefas,
+        "entradas": entradas,
+        "saidas": saidas,
+        "saldo": saldo,
+        "projetos": projetos,
+        "tarefas": tarefas,
+    }
+
+
+def resposta_local(pergunta, contexto):
+    pergunta_baixa = pergunta.lower()
+
+    if "saldo" in pergunta_baixa or "financeiro" in pergunta_baixa:
+        return (
+            f"O saldo atual e de R$ {contexto['saldo']:.2f}. "
+            f"As entradas somam R$ {contexto['entradas']:.2f} e as saidas somam R$ {contexto['saidas']:.2f}."
+        )
+
+    if "projeto" in pergunta_baixa:
+        projetos = contexto["projetos"]
+        if not projetos:
+            return "Ainda nao ha projetos cadastrados."
+        itens = "; ".join([f"{nome} para {cliente} ({status})" for nome, cliente, status in projetos])
+        return f"Voce tem {contexto['total_projetos']} projetos cadastrados. Mais recentes: {itens}."
+
+    if "tarefa" in pergunta_baixa:
+        tarefas = contexto["tarefas"]
+        if not tarefas:
+            return "Ainda nao ha tarefas cadastradas."
+        itens = "; ".join([f"{titulo} - {status}" for titulo, _, status, _ in tarefas])
+        return f"Voce tem {contexto['total_tarefas']} tarefas cadastradas. Mais recentes: {itens}."
+
+    return (
+        "Posso ajudar a analisar clientes, financeiro, projetos e tarefas. "
+        f"No momento ha {contexto['total_clientes']} clientes, {contexto['total_projetos']} projetos "
+        f"e {contexto['total_tarefas']} tarefas na base."
+    )
+
+
+def gerar_resposta_ia(pergunta):
+    contexto = resumo_gestao()
+    api_key = os.getenv("OPENAI_API_KEY")
+
+    if not api_key or OpenAI is None:
+        return resposta_local(pergunta, contexto), False
+
+    cliente = OpenAI(api_key=api_key)
+    prompt_contexto = f"""
+Usuario: {session.get('usuario')}
+Clientes cadastrados: {contexto['total_clientes']}
+Projetos cadastrados: {contexto['total_projetos']}
+Tarefas cadastradas: {contexto['total_tarefas']}
+Entradas: R$ {contexto['entradas']:.2f}
+Saidas: R$ {contexto['saidas']:.2f}
+Saldo: R$ {contexto['saldo']:.2f}
+Projetos recentes: {contexto['projetos']}
+Tarefas recentes: {contexto['tarefas']}
+"""
+
+    resposta = cliente.responses.create(
+        model=os.getenv("OPENAI_MODEL", "gpt-5"),
+        instructions=(
+            "Voce e o assistente de gestao do sistema GestaoTec+. "
+            "Responda em portugues do Brasil, com objetividade, usando somente os dados fornecidos "
+            "quando falar da empresa. Se faltar dado, diga o que precisa ser cadastrado."
+        ),
+        input=[
+            {"role": "developer", "content": prompt_contexto},
+            {"role": "user", "content": pergunta},
+        ],
+    )
+
+    return resposta.output_text.strip(), True
 
 
 def criar_banco():
@@ -170,7 +287,7 @@ def logout():
 # =========================
 @app.route("/dashboard")
 def dashboard():
-    if "usuario" not in session:
+    if not usuario_logado():
         return redirect("/")
 
     conn = conectar()
@@ -188,7 +305,7 @@ def dashboard():
     cursor.execute("SELECT SUM(valor) FROM financeiro WHERE tipo='Entrada'")
     entradas = cursor.fetchone()[0] or 0
 
-    cursor.execute("SELECT SUM(valor) FROM financeiro WHERE tipo='Saída'")
+    cursor.execute("SELECT SUM(valor) FROM financeiro WHERE tipo=?", ("Sa\u00edda",))
     saidas = cursor.fetchone()[0] or 0
 
     saldo = entradas - saidas
@@ -206,9 +323,42 @@ def dashboard():
     )
 
 
+@app.route("/ia")
+def ia():
+    if not usuario_logado():
+        return redirect("/")
+
+    modo_ia = bool(os.getenv("OPENAI_API_KEY") and OpenAI is not None)
+    return render_template("ia.html", modo_ia=modo_ia)
+
+
+@app.route("/api/ia", methods=["POST"])
+def api_ia():
+    if not usuario_logado():
+        return jsonify({"erro": "Usuario nao autenticado"}), 401
+
+    dados = request.get_json(silent=True) or {}
+    pergunta = (dados.get("mensagem") or "").strip()
+
+    if not pergunta:
+        return jsonify({"erro": "Digite uma mensagem para a IA."}), 400
+
+    try:
+        resposta, usando_openai = gerar_resposta_ia(pergunta)
+        return jsonify({"resposta": resposta, "usando_openai": usando_openai})
+    except Exception as erro:
+        return jsonify({
+            "erro": "Nao foi possivel consultar a IA agora.",
+            "detalhe": str(erro)
+        }), 500
+
+
 # ROTAS
 @app.route("/clientes", methods=["GET", "POST"])
 def clientes():
+    if not usuario_logado():
+        return redirect("/")
+
     conn = conectar()
     cursor = conn.cursor()
 
@@ -233,6 +383,9 @@ def clientes():
 
 @app.route("/financeiro", methods=["GET", "POST"])
 def financeiro():
+    if not usuario_logado():
+        return redirect("/")
+
     conn = conectar()
     cursor = conn.cursor()
 
@@ -257,6 +410,9 @@ def financeiro():
 
 @app.route("/projetos", methods=["GET", "POST"])
 def projetos():
+    if not usuario_logado():
+        return redirect("/")
+
     conn = conectar()
     cursor = conn.cursor()
 
@@ -281,6 +437,9 @@ def projetos():
 
 @app.route("/tarefas", methods=["GET", "POST"])
 def tarefas():
+    if not usuario_logado():
+        return redirect("/")
+
     conn = conectar()
     cursor = conn.cursor()
 
